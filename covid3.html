@@ -1,0 +1,380 @@
+<html>
+<head>
+    <title>Covid Narrative Vizualization</title>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <style>
+        select {
+            display: block;
+        }
+        body {
+          font: 4px sans-serif;
+        }
+        .axis path,
+        .axis line {
+          fill: none;
+          stroke: #ffffff;
+          shape-rendering: crispEdges;
+        }
+
+        .x.axis path {
+          display: none;
+        }
+        
+        path {
+            fill: none;
+            stroke: #F7AF99;
+            stroke-width: .5;
+        }
+        
+        path.line-0 {
+            fill: none;
+            stroke: #F7AF99;
+            }
+
+        path.line-1 {
+            fill: none;
+            stroke: #7676FF;
+        }
+        .serie_label2 {
+            fill: #F7AF99;
+            font-family: Georgia;
+            font-size: 90%;
+            }
+        
+            .overlay {
+            fill: none;
+            pointer-events: all;
+        }
+        .serie_label3 {
+            fill: #7676FF;
+            font-family: Georgia;
+            font-size: 90%;
+            }
+        
+            .overlay {
+            fill: none;
+            pointer-events: all;
+        }
+        :root {
+              --annotation-anomaly-color: #E8336D;
+        }
+a.button {
+    background-color: lightblue;
+    border: none;
+    color: white;
+    padding: 8px 22px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    }
+     div.header {
+    padding: 5px;
+    text-align: center;
+    background: lightblue;
+    color: white;
+    font-size: 15px;
+    vertical-align: middle;
+}
+    </style>
+    <script type="text/javascript">  
+    var margin = 0,
+        width = 550,
+        height = 160,
+        padding=0,
+        adj=30;
+    function plot_line_chart(data) {
+        var header_div = d3.select("body")
+            .append("div")
+            .attr("id","header")
+            .attr("width", width-margin)
+            .attr("class","header");
+        
+        var content = d3.select("body")
+            .append("div")
+            .attr("id","content")
+            .attr("width", width-margin)
+            .attr("style","text-align: center;vertical-align: middle;"); 
+        d3.select("body").append("label").text("Choose a country: ").attr("style","font-size:15px;font-weight:bold;");
+        var legend = d3.select("body")
+            .append("select")
+            .attr("id","legend")
+            .attr('class','select')
+            .on('change',onchange);
+        var select_data = [];
+        for(var index in data) {
+            select_data.push(data[index].location);
+        }
+        var location = 'World';
+        select_data = [...new Set(select_data)];
+        var options = legend
+          .selectAll('myOptions')
+            .data(select_data).enter()
+            .append('option')
+            .text(function (d) { 
+                return d;
+            })
+            .attr("value", function (d) {
+                return d;
+            })
+            .property("selected", function (d) {
+                return location === d;
+            });
+                
+        function onchange() {
+            location = d3.select('select').property('value');
+            plot_line_chart2(data, location);
+        };  
+        
+        function header_content() {
+            var header_html = "<span style='font-size:40;'>World Covid Cases (Daily Trend Analysis since Jan 1st 2021)</span>" + "<br>"
+            return header_html +"<br>";
+        }
+        d3.select("#header").html(header_content());
+        d3.select("#content").html("<br><span style='font-size:15;'>Here by default we can see daily trend of new covid and death cases across the world. "
+        +"<br> You can select a country to see its daily new covid and death cases from Jan 1st 2021 onwards.Hovering over any point will display total new cases and deaths reported for a given date<br>"
+        +"<br><span style='background-color:#32CD32;font-weight:bold;font-size:20px;'><a class='button' href='https://hiteshsondhi2021.github.io/covid2.html'>Previous</a></span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
+        +"<span style='background-color:#32CD32;font-weight:bold;font-size:20px;'><a class='button' href='https://hiteshsondhi2021.github.io/index.html'>Start Over</a></span>");
+        
+        plot_line_chart2(data, location);
+    }
+    function plot_line_chart2(data, location) {
+        d3.selectAll("svg").remove();
+        var svg = d3.select('body').append("svg")
+            .attr("preserveAspectRatio", "xMinYMin meet")
+            .attr("viewBox", "-"
+               + adj + " -"
+               + adj + " "
+               + (width + adj *3) + " "
+               + (height + adj*3))
+            .style("padding", padding)
+            .style("margin", margin)
+            .classed("svg-content", true);
+       
+        var tooltip = d3.select('#tooltip');
+        var tooltipLine = svg.append('line');
+        
+        svg.append("text")
+        .attr("x", width / 2 )
+        .attr("y", -10)
+        .attr("class", "title")
+        .style("text-anchor", "middle")
+        .style("font-size", "130%")
+        .style("font-weight", "bold")
+        .style('fill','white')
+        .text("Daily new covid cases and deaths analysis chart (" + location+ ")");
+
+        var newcasesjsonObj = [];
+        var newdeathsjsonObj = [];
+        var slices = [];
+        var dtobj = d3.time.format("%d-%b-%Y")
+        var select_data = [];
+        var high_covid_case = null;
+        var high_covid_case_dt = null;
+        var high_death_case = null;
+        var high_death_case_dt = null;
+        for(var index in data) {
+            select_data.push(data[index].location);
+            if(data[index].location == location) {
+                new_cases_item = {};
+                new_cases_item['date'] = dtobj.parse(data[index].datetime);
+                new_cases_item['strdate'] = data[index].datetime;
+                new_cases_item['measurement'] = data[index].new_cases;
+                newcasesjsonObj.push(new_cases_item);
+                
+                if(high_covid_case == null) {
+                    high_covid_case = data[index].new_cases;
+                    high_covid_case_dt = dtobj.parse(data[index].datetime);
+                } else {
+                    if(high_covid_case < data[index].new_cases) {
+                        high_covid_case = data[index].new_cases;
+                        high_covid_case_dt = dtobj.parse(data[index].datetime);
+                    }
+                }
+                
+                
+                new_deaths_item = {};
+                new_deaths_item['date'] = dtobj.parse(data[index].datetime);
+                new_deaths_item['strdate'] = data[index].datetime;
+                new_deaths_item['measurement'] = data[index].new_deaths;
+                newdeathsjsonObj.push(new_deaths_item);
+                
+                if(high_death_case == null) {
+                    high_death_case = data[index].new_deaths;
+                    high_death_case_dt = dtobj.parse(data[index].datetime);
+                } else {
+                    if(high_death_case < data[index].new_deaths) {
+                        high_death_case = data[index].new_deaths;
+                        high_death_case_dt = dtobj.parse(data[index].datetime);
+                    }
+                }
+            }
+        }
+        
+        slices['new_cases']=  newcasesjsonObj;
+        slices['new_deaths']=  newdeathsjsonObj;
+        var all_slices_vals = [newcasesjsonObj, newdeathsjsonObj];
+        
+        const xScale = d3.time.scale().range([0,width]);
+        const yScale = d3.scale.linear().rangeRound([height, 0]);
+        
+        xdomain = d3.extent(slices['new_cases'], function(d){
+            return d['date'];
+        });
+        xScale.domain(xdomain);
+        
+        
+        ydomain = [(0), d3.max(all_slices_vals, function(c) {
+            return d3.max(c, function(d) {
+                return d.measurement + 4; });
+                })
+        ];
+        yScale.domain(ydomain);
+        
+        const yaxis = d3.svg.axis()
+            .ticks(30)
+            .scale(yScale).orient("left");
+
+        const xaxis = d3.svg.axis()
+            .ticks(30)
+            .tickFormat(d3.time.format('%b %d'))
+            .scale(xScale).orient("bottom");
+        
+        svg.append("g")
+            .attr("class", "axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xaxis)
+            .selectAll("text")	
+            .style("text-anchor", "end")
+            .style('fill', 'white')
+            .attr("dx", "-.8em")
+            .attr("dy", ".15em")
+            .attr("transform", function(d) {
+                return "rotate(-60)" 
+                });
+                
+        svg.append("g")
+            .attr("class", "axis")
+            .call(yaxis)
+            .append("text")
+            .attr("transform", "rotate(-90)")
+            .style("text-anchor", "end")
+            .style('fill', 'white')
+            .attr("dy", ".75em")
+            .attr("y", 6)
+//             .text("Frequency");
+        
+//          svg.select('.y').style('fill','white');
+
+       
+        var line = d3.svg.line()
+            .x(function(d) { return xScale(d.date); })
+            .y(function(d) { return yScale(d.measurement); });
+        
+        let id = 0;
+        const ids = function () {
+            return "line-"+id++;
+        }
+
+        id = 0;
+        const serie_ids = function () {
+            return "serie_label"+id++;
+        }
+        
+        var arr_slices = [];
+        for(var x in slices) {
+                var myObject = {};
+                myObject['id'] = x;
+                myObject['values'] = slices[x];
+                arr_slices.push(myObject);
+        }
+        var lines = svg.selectAll("lines")
+            .data(arr_slices)
+            .enter()
+            .append("g");
+
+        lines.append("path")
+            .attr("class", ids)
+            .attr("d", function(d) {
+            return line(d.values); 
+            });
+            
+        lines.append("text")
+            .attr("class",serie_ids)
+            .datum(function(d) {
+                return {
+                    id: d.id,
+                    value: d.values[d.values.length - 1]}; })
+            .attr("transform", function(d) {
+                    return "translate(" + (xScale(d.value.date) + 10)  
+                    + "," + (yScale(d.value.measurement) + 5 ) + ")";})
+            .attr("x", 5)
+            .style('fill','white')
+            .text(function(d) { return  d.id.replace("_"," "); 
+            }).style('fill','white');
+            
+        let tipBox;
+        tipBox = svg.append('rect')
+        .attr('width', width)
+        .attr('height', height)
+        .attr('opacity', 0)
+        .on('mousemove', drawTooltip)
+        .on('mouseout', removeTooltip);
+        
+        function removeTooltip() {
+          if (tooltip) tooltip.style('display', 'none');
+          if (tooltipLine) tooltipLine.attr('stroke', 'none');
+        }
+        
+        function drawTooltip() {
+          var timeConv = d3.time.format("%d-%b-%Y");
+          var dthovered = xScale.invert(d3.mouse(tipBox.node())[0]);
+          var dthoveredstr = timeConv(dthovered);
+          arr_slices.sort((a, b) => {
+            return b.values.find(h => 
+                h.strdate == dthoveredstr
+                ).measurement - a.values.find(h => h.strdate == dthoveredstr).measurement;
+          })  
+            
+          tooltipLine.attr('stroke', '#DEE1E6').attr("shape-rendering","crispEdges")
+            .attr('x1', xScale(dthovered))
+            .attr('x2', xScale(dthovered))
+            .attr('y1', 0)
+            .attr('y2', height);
+          
+          tooltip.html(dthoveredstr)
+            .style('display', 'block')
+            .style('left', d3.event.pageX + 20)
+            .style('top', d3.event.pageY - 20)
+            .selectAll()
+            .data(arr_slices).enter()
+            .append('div')
+            .style('color', "black")
+//             .style('background','white')
+            .style('fill', 'black')
+            .html(d => 
+                d.id.replace("_"," ")+": " + d.values.find(
+                    h => h.strdate == dthoveredstr).measurement
+                    );
+        }
+
+        };
+    </script>
+  </head>
+<body BGCOLOR = "darkslategray" TEXT ="WHITE">
+<div id='tooltip' style='display:none;height:50px;width: 150px;pointer-events: none;border-radius: 8px;border: 0px;font: 12px sans-serif;position:absolute;background-color:white;color:black;padding:2px'></div>
+  <script>
+    var dtformat = d3.time.format("%Y-%m-%d");
+    var timeConv = d3.time.format("%d-%b-%Y");
+    d3.tsv("https://hiteshsondhi2021.github.io/covid-data.tsv", function(d) {
+          d['date'] = dtformat.parse(d['date']);
+          d['datetime'] = timeConv(d['date']);
+          d['new_cases'] = +d['new_cases'];
+          d['new_deaths'] = +d['new_deaths'];
+          d['population'] = +d['population'];
+          return d;
+        }, plot_line_chart);
+  </script>  
+</body>
+</html>
