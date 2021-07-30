@@ -257,7 +257,7 @@ a.button {
         svg.append("g")
             .attr("class", "axis")
             .call(yaxis)
-            .append("text")
+            .selectAll("text")
             .attr("transform", "rotate(-90)")
             .style("text-anchor", "end")
             .style('fill', 'white')
