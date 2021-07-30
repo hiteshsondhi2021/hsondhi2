@@ -236,7 +236,7 @@ a.button {
         yScale.domain(ydomain);
         
         const yaxis = d3.svg.axis()
-            .ticks(30)
+            .ticks(15)
             .scale(yScale).orient("left");
 
         const xaxis = d3.svg.axis()
@@ -268,7 +268,6 @@ a.button {
             .attr("y", 6)
 //             .text("Frequency");
         
-        svg.select('.y').style('opacity','1').style('fill','white');
 
        
         var line = d3.svg.line()
